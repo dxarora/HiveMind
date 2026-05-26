@@ -1,0 +1,1 @@
+Let's explore the [[BaseModel]] Class of pydantic framework.
