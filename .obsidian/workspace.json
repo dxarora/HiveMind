@@ -11,14 +11,10 @@
             "id": "49e40d23ec0f18de",
             "type": "leaf",
             "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Hive.md",
-                "mode": "source",
-                "source": false
-              },
+              "type": "empty",
+              "state": {},
               "icon": "lucide-file",
-              "title": "Hive"
+              "title": "New tab"
             }
           }
         ]
@@ -185,10 +181,18 @@
   },
   "active": "49e40d23ec0f18de",
   "lastOpenFiles": [
+    "Concepts/AI_Topics.md",
+    "AI_Topics.md",
+    "AI_Projects.md",
+    "Flight Physics_Docs&Architecture/Hive.md",
+    "Flight Physics_Docs&Architecture",
+    "Hive.md",
+    "Flight Physics/Hive.md",
+    "Python Related Stuff/Clean Code.md",
+    "Python Related Stuff/Fluent Python.md",
     "Fluent Python.md",
     "Clean Code.md",
     "Topics to discuss.md",
-    "Hive.md",
     "Concepts/Aircraft_Data.md",
     "Aircraft_Data.md",
     "Obsidian.md",
