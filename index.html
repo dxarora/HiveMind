@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HiveMind — Aerospace Knowledge Operating System</title>
+<meta name="description" content="A personal aerospace knowledge operating system. Interactive knowledge graph navigation across all aerospace engineering domains.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;900&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#040B14;
+  --atmosphere:#0A1525;
+  --amber:#F2A93B;
+  --chalk:#EAF7FF;
+  --muted:#6E89A3;
+  --work:#6EF5A5;
+  --cyan:#7DF9FF;
+  --cyan2:#5DAEFF;
+  --panel:#0A1525EE;
+  --line:#1C3349;
+  --line2:#0D1F30;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{width:100%;height:100%;overflow:hidden;}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+body{
+  background:var(--bg);
+  color:var(--chalk);
+  font-family:'IBM Plex Sans',sans-serif;
+  -webkit-font-smoothing:antialiased;
+  user-select:none;
+}
+::selection{background:var(--amber);color:var(--bg);}
+
+/* ─── STARFIELD ─── */
+#starfield{position:fixed;inset:0;z-index:0;pointer-events:none;}
+#spotlight{
+  position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:radial-gradient(600px circle at var(--mx,50%) var(--my,40%), #7DF9FF0C, transparent 70%);
+}
+
+/* ─── GRAPH CANVAS ─── */
+#graph{position:fixed;inset:0;z-index:2;}
+
+/* ─── HEADER ─── */
+#header{
+  position:fixed;top:0;left:0;right:0;z-index:20;
+  padding:22px 32px 0;
+  display:flex;align-items:flex-start;justify-content:space-between;
+  pointer-events:none;
+}
+#header-left{pointer-events:none;}
+.sys-label{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:.68rem;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--amber);opacity:.9;
+  margin-bottom:4px;
+}
+#wordmark{
+  font-family:'Big Shoulders Display',sans-serif;
+  font-weight:900;font-size:clamp(1.8rem,4vw,3rem);
+  text-transform:uppercase;letter-spacing:.03em;
+  color:var(--chalk);
+  line-height:1;
+}
+#wordmark span{color:var(--amber);text-shadow:0 0 40px #F2A93B55;}
+.sys-sub{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:.65rem;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);margin-top:5px;
+}
+#header-right{
+  pointer-events:all;
+  display:flex;flex-direction:column;align-items:flex-end;gap:10px;
+}
+#search-wrap{
+  display:flex;align-items:center;gap:10px;
+  background:#0A1525CC;
+  border:1px solid var(--line);
+  border-radius:3px;
+  padding:7px 12px;
+  backdrop-filter:blur(8px);
+  transition:border-color .2s;
+}
+#search-wrap:focus-within{border-color:var(--cyan);}
+#search-icon{color:var(--muted);font-size:.9rem;flex-shrink:0;}
+#search{
+  background:none;border:none;outline:none;
+  font-family:'IBM Plex Mono',monospace;font-size:.78rem;
+  color:var(--chalk);letter-spacing:.04em;
+  width:160px;
+}
+#search::placeholder{color:var(--muted);}
+#node-count{
+  font-family:'IBM Plex Mono',monospace;font-size:.62rem;
+  letter-spacing:.1em;color:var(--muted);
+  text-align:right;
+}
+#node-count b{color:var(--work);}
+
+/* ─── DETAIL PANEL ─── */
+#panel{
+  position:fixed;right:0;top:0;bottom:0;
+  width:min(360px, 90vw);
+  z-index:30;
+  background:linear-gradient(160deg,#0C1E30F2,#060F1AF2);
+  border-left:1px solid var(--line);
+  backdrop-filter:blur(12px);
+  transform:translateX(100%);
+  transition:transform .35s cubic-bezier(.22,1,.36,1);
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+#panel.open{transform:translateX(0);}
+#panel-close{
+  position:absolute;top:16px;right:16px;
+  background:none;border:1px solid var(--line);border-radius:2px;
+  color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:.7rem;
+  padding:4px 9px;cursor:pointer;letter-spacing:.08em;
+  transition:border-color .2s,color .2s;
+  z-index:2;
+}
+#panel-close:hover{border-color:var(--amber);color:var(--amber);}
+#panel-inner{padding:32px 26px;flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:20px;}
+#panel-inner::-webkit-scrollbar{width:4px;}
+#panel-inner::-webkit-scrollbar-track{background:transparent;}
+#panel-inner::-webkit-scrollbar-thumb{background:var(--line);border-radius:2px;}
+.p-eyebrow{
+  font-family:'IBM Plex Mono',monospace;font-size:.65rem;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--muted);
+}
+#p-title{
+  font-family:'Big Shoulders Display',sans-serif;
+  font-weight:700;font-size:clamp(1.6rem,3vw,2.2rem);
+  text-transform:uppercase;letter-spacing:.01em;
+  color:var(--chalk);line-height:1.05;
+}
+#p-status{display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:.72rem;letter-spacing:.08em;}
+.status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.status-active{background:var(--work);box-shadow:0 0 8px 2px #6EF5A5aa;}
+.status-soon{background:var(--muted);}
+#p-desc{font-size:.9rem;color:var(--muted);line-height:1.6;}
+.p-divider{height:1px;background:var(--line);}
+.p-section-label{
+  font-family:'IBM Plex Mono',monospace;font-size:.65rem;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--muted);
+  margin-bottom:10px;
+}
+#p-connections{display:flex;flex-wrap:wrap;gap:7px;}
+.conn-tag{
+  font-family:'IBM Plex Mono',monospace;font-size:.68rem;
+  border:1px solid var(--line);border-radius:2px;
+  padding:4px 9px;color:var(--muted);
+  cursor:pointer;transition:border-color .2s,color .2s;
+  letter-spacing:.04em;
+}
+.conn-tag:hover{border-color:var(--cyan);color:var(--cyan);}
+#p-launch{
+  margin-top:auto;
+  display:inline-flex;align-items:center;gap:10px;
+  background:var(--amber);color:var(--bg);
+  font-family:'Big Shoulders Display',sans-serif;font-weight:700;
+  font-size:1rem;text-transform:uppercase;letter-spacing:.06em;
+  border:none;border-radius:3px;padding:13px 20px;
+  cursor:pointer;text-decoration:none;
+  transition:opacity .2s,transform .2s;
+}
+#p-launch:hover{opacity:.88;transform:translateX(3px);}
+#p-launch-soon{
+  margin-top:auto;
+  font-family:'IBM Plex Mono',monospace;font-size:.72rem;
+  color:var(--muted);letter-spacing:.08em;padding:12px 0;
+  border-top:1px solid var(--line);
+}
+
+/* ─── FOOTER ─── */
+#footer{
+  position:fixed;bottom:0;left:0;right:0;z-index:20;
+  padding:0 32px 18px;
+  display:flex;align-items:flex-end;justify-content:space-between;
+  pointer-events:none;
+}
+.footer-mono{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:.62rem;letter-spacing:.1em;color:var(--muted);
+  line-height:1.7;
+}
+.footer-mono a{color:var(--muted);text-decoration:none;pointer-events:all;}
+.footer-mono a:hover{color:var(--amber);}
+#hud-live{
+  font-family:'IBM Plex Mono',monospace;font-size:.62rem;
+  letter-spacing:.09em;color:var(--cyan2);
+  display:flex;gap:16px;align-items:center;
+}
+#hud-live span b{color:var(--chalk);}
+.hud-sep{color:var(--line);font-size:.9em;}
+
+/* ─── TOOLTIP ─── */
+#tooltip{
+  position:fixed;z-index:40;
+  background:#0A1830EE;
+  border:1px solid var(--amber);
+  border-radius:3px;
+  padding:9px 13px;
+  font-family:'IBM Plex Mono',monospace;font-size:.72rem;
+  color:var(--chalk);
+  pointer-events:none;
+  opacity:0;
+  transition:opacity .15s;
+  max-width:200px;
+  line-height:1.5;
+  backdrop-filter:blur(6px);
+}
+#tooltip.show{opacity:1;}
+#tooltip .tt-title{color:var(--amber);font-weight:600;margin-bottom:3px;font-size:.75rem;}
+#tooltip .tt-status{color:var(--muted);font-size:.65rem;margin-top:3px;}
+
+/* ─── INTRO HINT ─── */
+#hint{
+  position:fixed;bottom:44px;left:50%;transform:translateX(-50%);
+  z-index:20;
+  font-family:'IBM Plex Mono',monospace;font-size:.65rem;
+  letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);
+  display:flex;flex-direction:column;align-items:center;gap:7px;
+  animation:hintFade 3s ease 2s forwards;
+  pointer-events:none;
+}
+@keyframes hintFade{0%{opacity:1;}100%{opacity:0;}}
+.hint-stick{width:1px;height:24px;background:var(--muted);position:relative;overflow:hidden;}
+.hint-stick::after{content:'';position:absolute;left:-1px;top:-100%;width:3px;height:50%;background:var(--amber);animation:fall 1.6s ease-in-out infinite;}
+@keyframes fall{to{top:100%;}}
+
+/* ─── SCHEMATIC OVERLAY ─── */
+#schematic-overlay{
+  position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.035;
+}
+
+@media(max-width:600px){
+  #header{padding:16px 16px 0;}
+  #header-right{display:none;}
+  #footer{padding:0 16px 12px;}
+  #panel{width:100%;}
+  #wordmark{font-size:1.6rem;}
+}
+</style>
+</head>
+<body>
+
+<!-- Starfield -->
+<canvas id="starfield"></canvas>
+
+<!-- Spotlight follow -->
+<div id="spotlight"></div>
+
+<!-- Schematic bg -->
+<svg id="schematic-overlay" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+  <!-- Wing planform outline -->
+  <path d="M 720 450 L 200 700 L 220 720 L 640 530 L 720 480 L 800 530 L 1220 720 L 1240 700 Z"
+    stroke="#7DF9FF" stroke-width="1" fill="none"/>
+  <!-- Airfoil cross-section top-left -->
+  <path d="M 80 180 Q 180 120 320 155 Q 400 168 420 180" stroke="#F2A93B" stroke-width="0.8" fill="none"/>
+  <path d="M 80 180 Q 180 200 320 185 Q 400 180 420 180" stroke="#F2A93B" stroke-width="0.8" fill="none"/>
+  <!-- Airfoil cross-section bottom-right -->
+  <path d="M 1020 720 Q 1120 660 1260 695 Q 1340 708 1360 720" stroke="#7DF9FF" stroke-width="0.8" fill="none"/>
+  <path d="M 1020 720 Q 1120 740 1260 725 Q 1340 720 1360 720" stroke="#7DF9FF" stroke-width="0.8" fill="none"/>
+  <!-- Flight trajectory arcs -->
+  <path d="M 100 600 Q 400 200 1340 300" stroke="#6EF5A5" stroke-width="0.6" fill="none" stroke-dasharray="6 8"/>
+  <path d="M 100 700 Q 500 300 1340 400" stroke="#6EF5A5" stroke-width="0.4" fill="none" stroke-dasharray="4 10"/>
+  <!-- Grid reference lines -->
+  <line x1="0" y1="450" x2="1440" y2="450" stroke="#7DF9FF" stroke-width="0.4"/>
+  <line x1="720" y1="0" x2="720" y2="900" stroke="#7DF9FF" stroke-width="0.4"/>
+  <!-- Corner markers -->
+  <rect x="20" y="20" width="40" height="2" fill="#F2A93B"/>
+  <rect x="20" y="20" width="2" height="40" fill="#F2A93B"/>
+  <rect x="1380" y="20" width="40" height="2" fill="#F2A93B"/>
+  <rect x="1418" y="20" width="2" height="40" fill="#F2A93B"/>
+  <rect x="20" y="878" width="40" height="2" fill="#F2A93B"/>
+  <rect x="20" y="860" width="2" height="40" fill="#F2A93B"/>
+  <rect x="1380" y="878" width="40" height="2" fill="#F2A93B"/>
+  <rect x="1418" y="860" width="2" height="40" fill="#F2A93B"/>
+</svg>
+
+<!-- Main graph canvas -->
+<canvas id="graph"></canvas>
+
+<!-- Header -->
+<div id="header">
+  <div id="header-left">
+    <div class="sys-label">Aerospace Knowledge OS</div>
+    <div id="wordmark">Hive<span>Mind</span></div>
+    <div class="sys-sub">Knowledge Graph · v0.2.0 · 2 Modules Active</div>
+  </div>
+  <div id="header-right">
+    <div id="search-wrap">
+      <span id="search-icon">⌕</span>
+      <input id="search" type="text" placeholder="Search domains…" autocomplete="off" spellcheck="false">
+    </div>
+    <div id="node-count"><b id="active-count">2</b> active · <b id="total-count">11</b> domains mapped</div>
+  </div>
+</div>
+
+<!-- Detail panel -->
+<div id="panel">
+  <button id="panel-close">ESC</button>
+  <div id="panel-inner">
+    <div>
+      <div class="p-eyebrow" id="p-eyebrow">Domain</div>
+      <div id="p-title">—</div>
+    </div>
+    <div id="p-status">
+      <span class="status-dot" id="p-dot"></span>
+      <span id="p-status-text"></span>
+    </div>
+    <p id="p-desc"></p>
+    <div class="p-divider"></div>
+    <div>
+      <div class="p-section-label">Connected Domains</div>
+      <div id="p-connections"></div>
+    </div>
+    <div id="p-launch-wrap"></div>
+  </div>
+</div>
+
+<!-- Tooltip -->
+<div id="tooltip"><div class="tt-title" id="tt-title"></div><div id="tt-desc"></div><div class="tt-status" id="tt-status"></div></div>
+
+<!-- Footer -->
+<div id="footer">
+  <div class="footer-mono">
+    HiveMind · Dhruv Arora<br>
+    Flight Physics · Aerospace Engineering · Knowledge Systems<br>
+    <a href="https://github.com/dhruvarora" target="_blank" rel="noopener">github.com/dhruvarora ↗</a>
+  </div>
+  <div id="hud-live">
+    <span>NODES <b id="hud-nodes">11</b></span>
+    <span class="hud-sep">·</span>
+    <span>EDGES <b id="hud-edges">0</b></span>
+    <span class="hud-sep">·</span>
+    <span>ACTIVE <b id="hud-active">2</b></span>
+  </div>
+</div>
+
+<!-- Hint -->
+<div id="hint">
+  <div class="hint-stick"></div>
+  Hover to explore · Click to enter
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   KNOWLEDGE GRAPH DATA
+═══════════════════════════════════════════════════════ */
+const NODES = [
+  {
+    id:"performance",
+    title:"Aircraft Performance",
+    status:"active",
+    url:"./aircraft-performance/",
+    desc:"Study of energy, efficiency, flight envelope, and operational capability. Range, endurance, climb, and manoeuvre analysis rooted in the energy state.",
+    connections:["flight-mechanics","propulsion","certification","aerodynamics"]
+  },
+  {
+    id:"stability",
+    title:"Stability & Control",
+    status:"active",
+    url:"./stability-control/",
+    desc:"Static and dynamic stability, control effectiveness, and response characteristics. The discipline governing how aircraft behave when perturbed from equilibrium.",
+    connections:["flight-mechanics","loads","aeroelasticity","aerodynamics","certification"]
+  },
+  {
+    id:"flight-mechanics",
+    title:"Flight Mechanics",
+    status:"soon",
+    url:null,
+    desc:"Equations of motion, reference frames, and the full six-degree-of-freedom description of aircraft dynamics.",
+    connections:["performance","stability","aerodynamics"]
+  },
+  {
+    id:"loads",
+    title:"Aircraft Loads",
+    status:"soon",
+    url:null,
+    desc:"Determination of structural load cases — manoeuvre, gust, ground — that size the airframe. Boundary between aerodynamics and structures.",
+    connections:["stability","structures","aeroelasticity","certification"]
+  },
+  {
+    id:"aeroelasticity",
+    title:"Aeroelasticity",
+    status:"soon",
+    url:null,
+    desc:"Coupled aerodynamic and structural dynamics. Flutter, divergence, control effectiveness, and the interaction between flexibility and flight.",
+    connections:["stability","loads","structures","aerodynamics"]
+  },
+  {
+    id:"aerodynamics",
+    title:"Aerodynamics",
+    status:"soon",
+    url:null,
+    desc:"Generation of lift and drag from airfoil to full configuration. Subsonic, transonic, and compressibility effects on aircraft performance and stability.",
+    connections:["performance","stability","flight-mechanics","aeroelasticity"]
+  },
+  {
+    id:"structures",
+    title:"Aircraft Structures",
+    status:"soon",
+    url:null,
+    desc:"Stress analysis, material behaviour, and structural sizing. The discipline that translates load cases into a safe, efficient airframe.",
+    connections:["loads","aeroelasticity","certification"]
+  },
+  {
+    id:"propulsion",
+    title:"Propulsion",
+    status:"soon",
+    url:null,
+    desc:"Thrust generation, engine performance, and powerplant integration. The energy source that closes the aircraft performance problem.",
+    connections:["performance","certification"]
+  },
+  {
+    id:"certification",
+    title:"Certification",
+    status:"soon",
+    url:null,
+    desc:"Regulatory compliance — CS-25, FAR Part 25, and beyond. The framework that converts engineering analysis into airworthiness demonstration.",
+    connections:["performance","stability","loads","structures","propulsion","flight-testing"]
+  },
+  {
+    id:"flight-testing",
+    title:"Flight Testing",
+    status:"soon",
+    url:null,
+    desc:"Experimental validation of analytical predictions. The discipline that closes the loop between theory and the real aircraft.",
+    connections:["certification","performance","stability"]
+  },
+  {
+    id:"design",
+    title:"Aircraft Design",
+    status:"soon",
+    url:null,
+    desc:"The synthesis discipline — integrating all other domains into a balanced, manufacturable, certifiable aircraft concept.",
+    connections:["performance","stability","aerodynamics","structures","propulsion","certification"]
+  }
+];
+
+// Build edge list (deduplicated)
+const edgeSet = new Set();
+const EDGES = [];
+NODES.forEach(n => {
+  n.connections.forEach(cid => {
+    const key = [n.id, cid].sort().join('|');
+    if(!edgeSet.has(key)){
+      edgeSet.add(key);
+      EDGES.push([n.id, cid]);
+    }
+  });
+});
+
+document.getElementById('hud-edges').textContent = EDGES.length;
+
+/* ═══════════════════════════════════════════════════════
+   FORCE-DIRECTED GRAPH ENGINE
+═══════════════════════════════════════════════════════ */
+const canvas = document.getElementById('graph');
+const ctx = canvas.getContext('2d');
+const reduceMotion = window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+let W, H;
+function resize(){
+  const dpr = window.devicePixelRatio || 1;
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.scale(dpr, dpr);
+}
+resize();
+window.addEventListener('resize', () => { resize(); initPositions(); });
+
+// Physics state
+const state = {};
+const NODE_MAP = {};
+NODES.forEach(n => {
+  NODE_MAP[n.id] = n;
+});
+
+function initPositions(){
+  const cx = W/2, cy = H/2;
+  const r = Math.min(W, H) * 0.32;
+  // Place active nodes near center
+  const active = NODES.filter(n => n.status === 'active');
+  const rest = NODES.filter(n => n.status !== 'active');
+
+  NODES.forEach((n, i) => {
+    if(!state[n.id]){
+      const angle = (i / NODES.length) * Math.PI * 2 - Math.PI/2;
+      const radius = n.status === 'active' ? r * 0.4 : r * (0.7 + Math.random()*0.3);
+      state[n.id] = {
+        x: cx + Math.cos(angle) * radius + (Math.random()-0.5)*40,
+        y: cy + Math.sin(angle) * radius + (Math.random()-0.5)*40,
+        vx: 0, vy: 0
+      };
+    }
+  });
+}
+initPositions();
+
+// Simulation constants
+const REPULSION = 4800;
+const SPRING_LEN = 160;
+const SPRING_K = 0.025;
+const DAMPING = 0.88;
+const CENTER_K = 0.006;
+const DRIFT_AMP = 0.18;
+
+let frameCount = 0;
+let hoveredId = null;
+let selectedId = null;
+let searchFocusId = null;
+
+function simulate(){
+  const cx = W/2, cy = H/2;
+  NODES.forEach(a => {
+    const sa = state[a.id];
+    let fx = 0, fy = 0;
+
+    // Repulsion between all nodes
+    NODES.forEach(b => {
+      if(b.id === a.id) return;
+      const sb = state[b.id];
+      const dx = sa.x - sb.x, dy = sa.y - sb.y;
+      const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+      const force = REPULSION / (dist * dist);
+      fx += (dx/dist) * force;
+      fy += (dy/dist) * force;
+    });
+
+    // Spring attraction along edges
+    a.connections.forEach(cid => {
+      const sb = state[cid];
+      if(!sb) return;
+      const dx = sb.x - sa.x, dy = sb.y - sa.y;
+      const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+      const stretch = dist - SPRING_LEN;
+      fx += (dx/dist) * stretch * SPRING_K;
+      fy += (dy/dist) * stretch * SPRING_K;
+    });
+
+    // Center gravity
+    fx += (cx - sa.x) * CENTER_K;
+    fy += (cy - sa.y) * CENTER_K;
+
+    // Ambient drift (breathing)
+    if(!reduceMotion){
+      const t = frameCount * 0.003 + a.id.length;
+      fx += Math.sin(t * 0.7 + a.id.charCodeAt(0)) * DRIFT_AMP;
+      fy += Math.cos(t * 0.5 + a.id.charCodeAt(1)||0) * DRIFT_AMP;
+    }
+
+    sa.vx = (sa.vx + fx * 0.1) * DAMPING;
+    sa.vy = (sa.vy + fy * 0.1) * DAMPING;
+    sa.x += sa.vx;
+    sa.y += sa.vy;
+
+    // Boundary
+    const pad = 80;
+    sa.x = Math.max(pad, Math.min(W - pad, sa.x));
+    sa.y = Math.max(pad, Math.min(H - pad, sa.y));
+  });
+}
+
+/* ═══════════════════════════════════════════════════════
+   RENDER
+═══════════════════════════════════════════════════════ */
+function getNodeRadius(n){
+  if(n.connections.length >= 5) return 22;
+  if(n.connections.length >= 3) return 18;
+  return 14;
+}
+
+function isConnected(aId, bId){
+  const a = NODE_MAP[aId];
+  return a && a.connections.includes(bId);
+}
+
+function getActiveId(){
+  return hoveredId || selectedId || searchFocusId;
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+
+  const activeId = getActiveId();
+
+  // ── Edges ──
+  EDGES.forEach(([aId, bId]) => {
+    const sa = state[aId], sb = state[bId];
+    if(!sa || !sb) return;
+    const na = NODE_MAP[aId], nb = NODE_MAP[bId];
+    const bothActive = na.status==='active' && nb.status==='active';
+    const highlighted = activeId && (activeId===aId || activeId===bId);
+    const dimmed = activeId && !highlighted;
+
+    ctx.beginPath();
+    ctx.moveTo(sa.x, sa.y);
+    ctx.lineTo(sb.x, sb.y);
+
+    if(dimmed){
+      ctx.strokeStyle = '#1C334940';
+      ctx.lineWidth = 0.6;
+      ctx.setLineDash([]);
+    } else if(highlighted){
+      ctx.strokeStyle = bothActive ? '#F2A93B' : '#7DF9FFaa';
+      ctx.lineWidth = bothActive ? 1.8 : 1.4;
+      ctx.setLineDash([]);
+      // Glow pass
+      ctx.save();
+      ctx.shadowColor = bothActive ? '#F2A93B' : '#7DF9FF';
+      ctx.shadowBlur = 8;
+      ctx.stroke();
+      ctx.restore();
+    } else {
+      const t = (frameCount * 0.006) % 1;
+      if(bothActive){
+        ctx.strokeStyle = '#F2A93B55';
+        ctx.lineWidth = 1.2;
+      } else {
+        ctx.strokeStyle = '#7DF9FF30';
+        ctx.lineWidth = 0.8;
+      }
+      ctx.setLineDash([5, 6]);
+      ctx.lineDashOffset = -frameCount * 0.4;
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+  });
+
+  // ── Nodes ──
+  NODES.forEach(n => {
+    const s = state[n.id];
+    if(!s) return;
+    const activeId = getActiveId();
+    const isHovered = n.id === hoveredId;
+    const isSelected = n.id === selectedId;
+    const isHighlighted = activeId && (n.id === activeId || isConnected(activeId, n.id));
+    const isDimmed = activeId && !isHighlighted;
+    const r = getNodeRadius(n);
+    const isActive = n.status === 'active';
+
+    const colorMain = isActive ? '#F2A93B' : '#7DF9FF';
+    const colorDim = isActive ? '#F2A93B55' : '#7DF9FF40';
+    const alpha = isDimmed ? 0.25 : 1;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    // Outer glow ring (for highlighted/active)
+    if(isHighlighted || isHovered || isSelected){
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, r + 8, 0, Math.PI*2);
+      ctx.fillStyle = isActive ? '#F2A93B12' : '#7DF9FF0C';
+      ctx.fill();
+    }
+
+    // Node circle
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, r, 0, Math.PI*2);
+
+    // Fill
+    if(isSelected || isHovered){
+      ctx.fillStyle = isActive ? '#F2A93B22' : '#7DF9FF18';
+    } else if(isHighlighted){
+      ctx.fillStyle = isActive ? '#F2A93B16' : '#7DF9FF12';
+    } else {
+      ctx.fillStyle = '#040B14CC';
+    }
+    ctx.fill();
+
+    // Stroke
+    ctx.strokeStyle = isDimmed ? colorDim : (isHovered || isSelected ? colorMain : (isHighlighted ? colorMain : colorDim));
+    ctx.lineWidth = (isHovered || isSelected) ? 2 : 1.2;
+    if(isActive && !isDimmed){
+      ctx.shadowColor = colorMain;
+      ctx.shadowBlur = isHovered || isSelected ? 18 : 10;
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Inner dot
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, isHovered || isSelected ? 4 : 3, 0, Math.PI*2);
+    ctx.fillStyle = isDimmed ? colorDim : colorMain;
+    if(!isDimmed && isActive){
+      ctx.shadowColor = colorMain;
+      ctx.shadowBlur = 8;
+    }
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // "Soon" tick marks for inactive
+    if(!isActive){
+      const ticks = 3;
+      for(let i=0;i<ticks;i++){
+        const angle = (i/ticks)*Math.PI*2 - Math.PI/2;
+        const tx = s.x + Math.cos(angle)*(r-4);
+        const ty = s.y + Math.sin(angle)*(r-4);
+        ctx.beginPath();
+        ctx.arc(tx, ty, 1, 0, Math.PI*2);
+        ctx.fillStyle = isDimmed ? '#6E89A320' : '#6E89A370';
+        ctx.fill();
+      }
+    }
+
+    // Label
+    ctx.font = `600 ${isHovered||isSelected?12:11}px IBM Plex Mono, monospace`;
+    ctx.textAlign = 'center';
+    ctx.letterSpacing = '0.04em';
+
+    const labelY = s.y + r + 17;
+    const words = n.title.split(' ');
+
+    // Background pill for label
+    const longestWord = words.reduce((a,b)=>a.length>b.length?a:b,'');
+    ctx.font = `600 ${isHovered||isSelected?12:11}px IBM Plex Mono, monospace`;
+    const textW = ctx.measureText(longestWord).width;
+    ctx.fillStyle = '#040B14BB';
+    const pillH = words.length * 14 + 4;
+    ctx.fillRect(s.x - textW/2 - 5, labelY - 11, textW + 10, pillH);
+
+    ctx.fillStyle = isDimmed ? '#6E89A340' : (isActive ? '#F2A93B' : '#EAF7FFcc');
+    if(words.length === 1){
+      ctx.fillText(n.title, s.x, labelY);
+    } else if(words.length === 2){
+      ctx.fillText(words[0], s.x, labelY);
+      ctx.fillText(words[1], s.x, labelY + 14);
+    } else {
+      ctx.fillText(words.slice(0,2).join(' '), s.x, labelY);
+      ctx.fillText(words.slice(2).join(' '), s.x, labelY + 14);
+    }
+
+    ctx.restore();
+  });
+
+  frameCount++;
+}
+
+/* ═══════════════════════════════════════════════════════
+   INTERACTION
+═══════════════════════════════════════════════════════ */
+function getNodeAtPoint(x, y){
+  let closest = null, closestDist = Infinity;
+  NODES.forEach(n => {
+    const s = state[n.id];
+    if(!s) return;
+    const r = getNodeRadius(n) + 12;
+    const dx = s.x - x, dy = s.y - y;
+    const dist = Math.sqrt(dx*dx+dy*dy);
+    if(dist < r && dist < closestDist){
+      closest = n; closestDist = dist;
+    }
+  });
+  return closest;
+}
+
+// Mouse position
+let mouseX = -9999, mouseY = -9999;
+canvas.addEventListener('mousemove', e => {
+  mouseX = e.clientX; mouseY = e.clientY;
+  document.documentElement.style.setProperty('--mx', e.clientX+'px');
+  document.documentElement.style.setProperty('--my', e.clientY+'px');
+
+  const node = getNodeAtPoint(e.clientX, e.clientY);
+  if(node){
+    hoveredId = node.id;
+    canvas.style.cursor = 'pointer';
+    showTooltip(node, e.clientX, e.clientY);
+  } else {
+    hoveredId = null;
+    canvas.style.cursor = 'default';
+    hideTooltip();
+  }
+});
+
+canvas.addEventListener('mouseleave', () => {
+  hoveredId = null;
+  hideTooltip();
+  canvas.style.cursor = 'default';
+});
+
+canvas.addEventListener('click', e => {
+  const node = getNodeAtPoint(e.clientX, e.clientY);
+  if(node){
+    selectNode(node);
+  } else {
+    deselectNode();
+  }
+});
+
+// Touch support
+canvas.addEventListener('touchstart', e => {
+  const t = e.touches[0];
+  const node = getNodeAtPoint(t.clientX, t.clientY);
+  if(node) selectNode(node);
+  else deselectNode();
+}, {passive:true});
+
+// Keyboard
+window.addEventListener('keydown', e => {
+  if(e.key === 'Escape'){
+    deselectNode();
+    document.getElementById('search').blur();
+    document.getElementById('search').value = '';
+    searchFocusId = null;
+  }
+});
+
+/* ─── Tooltip ─── */
+const tooltip = document.getElementById('tooltip');
+function showTooltip(node, x, y){
+  if(selectedId === node.id){ hideTooltip(); return; }
+  document.getElementById('tt-title').textContent = node.title;
+  document.getElementById('tt-desc').textContent = node.desc.split('.')[0] + '.';
+  document.getElementById('tt-status').textContent = node.status === 'active' ? '● Active module' : '○ Coming soon';
+  const tx = x + 18, ty = y - 10;
+  tooltip.style.left = Math.min(tx, W-220) + 'px';
+  tooltip.style.top = Math.max(10, ty) + 'px';
+  tooltip.classList.add('show');
+}
+function hideTooltip(){
+  tooltip.classList.remove('show');
+}
+
+/* ─── Panel ─── */
+function selectNode(node){
+  selectedId = node.id;
+  hideTooltip();
+  openPanel(node);
+}
+function deselectNode(){
+  selectedId = null;
+  closePanel();
+}
+
+function openPanel(node){
+  const panel = document.getElementById('panel');
+  document.getElementById('p-eyebrow').textContent = 'Domain · ' + node.connections.length + ' connections';
+  document.getElementById('p-title').textContent = node.title;
+  document.getElementById('p-desc').textContent = node.desc;
+
+  const dot = document.getElementById('p-dot');
+  const statusText = document.getElementById('p-status-text');
+  if(node.status === 'active'){
+    dot.className = 'status-dot status-active';
+    statusText.textContent = 'Active — Module deployed';
+  } else {
+    dot.className = 'status-dot status-soon';
+    statusText.textContent = 'Coming Soon';
+  }
+
+  // Connections
+  const connWrap = document.getElementById('p-connections');
+  connWrap.innerHTML = '';
+  node.connections.forEach(cid => {
+    const cn = NODE_MAP[cid];
+    if(!cn) return;
+    const tag = document.createElement('button');
+    tag.className = 'conn-tag';
+    tag.textContent = cn.title;
+    tag.addEventListener('click', () => selectNode(cn));
+    connWrap.appendChild(tag);
+  });
+
+  // Launch
+  const launchWrap = document.getElementById('p-launch-wrap');
+  launchWrap.innerHTML = '';
+  if(node.status === 'active' && node.url){
+    const a = document.createElement('a');
+    a.id = 'p-launch';
+    a.href = node.url;
+    a.target = '_blank';
+    a.innerHTML = 'Launch Module <span style="font-size:1.1em">→</span>';
+    launchWrap.appendChild(a);
+  } else {
+    const d = document.createElement('div');
+    d.id = 'p-launch-soon';
+    d.innerHTML = '○ Module in development — check back soon';
+    launchWrap.appendChild(d);
+  }
+
+  panel.classList.add('open');
+}
+function closePanel(){
+  document.getElementById('panel').classList.remove('open');
+}
+
+document.getElementById('panel-close').addEventListener('click', deselectNode);
+
+/* ─── Search ─── */
+const searchInput = document.getElementById('search');
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.trim().toLowerCase();
+  if(!q){ searchFocusId = null; return; }
+
+  let best = null, bestScore = 0;
+  NODES.forEach(n => {
+    const score =
+      (n.title.toLowerCase().includes(q) ? 10 : 0) +
+      (n.id.toLowerCase().includes(q) ? 8 : 0) +
+      (n.desc.toLowerCase().includes(q) ? 3 : 0);
+    if(score > bestScore){ bestScore = score; best = n; }
+  });
+
+  if(best){
+    searchFocusId = best.id;
+    // Gently nudge toward center
+    const s = state[best.id];
+    if(s){ s.vx += (W/2 - s.x)*0.04; s.vy += (H/2 - s.y)*0.04; }
+  } else {
+    searchFocusId = null;
+  }
+});
+searchInput.addEventListener('keydown', e => {
+  if(e.key === 'Enter' && searchFocusId){
+    selectNode(NODE_MAP[searchFocusId]);
+  }
+});
+
+/* ═══════════════════════════════════════════════════════
+   STARFIELD
+═══════════════════════════════════════════════════════ */
+(function(){
+  const sc = document.getElementById('starfield');
+  const sctx = sc.getContext('2d');
+  let sw, sh, particles = [];
+  const COUNT = reduceMotion ? 0 : 80;
+
+  function sresize(){ sw = sc.width = window.innerWidth; sh = sc.height = window.innerHeight; }
+  function sinit(){
+    sresize();
+    particles = Array.from({length:COUNT}, () => ({
+      x:Math.random()*sw, y:Math.random()*sh,
+      depth:.3+Math.random()*.7, r:.5+Math.random()*1.2,
+      tw:Math.random()*Math.PI*2,
+      vx:(Math.random()-.5)*.05, vy:(Math.random()-.5)*.05
+    }));
+  }
+  let pageVisible = true;
+  document.addEventListener('visibilitychange', () => { pageVisible = document.visibilityState==='visible'; });
+
+  function sframe(t){
+    if(pageVisible && COUNT){
+      sctx.clearRect(0,0,sw,sh);
+      particles.forEach(p => {
+        p.x+=p.vx*p.depth; p.y+=p.vy*p.depth;
+        if(p.x<0)p.x=sw; if(p.x>sw)p.x=0;
+        if(p.y<0)p.y=sh; if(p.y>sh)p.y=0;
+        const dx=p.x-mouseX, dy=p.y-mouseY;
+        const dSq=dx*dx+dy*dy;
+        if(dSq<8000){const d=Math.sqrt(dSq)||1; p.x+=dx/d*.5; p.y+=dy/d*.5;}
+        const tw=.5+Math.sin(t*.0008+p.tw)*.5;
+        sctx.beginPath();
+        sctx.arc(p.x,p.y,p.r*p.depth,0,Math.PI*2);
+        sctx.fillStyle=`rgba(125,249,255,${(.1+tw*.3)*p.depth})`;
+        sctx.fill();
+      });
+    }
+    requestAnimationFrame(sframe);
+  }
+  sinit();
+  window.addEventListener('resize', () => requestAnimationFrame(sinit));
+  requestAnimationFrame(sframe);
+})();
+
+/* ═══════════════════════════════════════════════════════
+   MAIN LOOP
+═══════════════════════════════════════════════════════ */
+let pageVisible2 = true;
+document.addEventListener('visibilitychange', () => { pageVisible2 = document.visibilityState==='visible'; });
+
+function loop(){
+  if(pageVisible2){
+    if(!reduceMotion) simulate();
+    draw();
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
