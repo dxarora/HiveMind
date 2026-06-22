@@ -1,1 +1,0 @@
-	len(collection) vs collection.len() 
