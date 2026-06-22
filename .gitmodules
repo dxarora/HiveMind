@@ -1,0 +1,6 @@
+[submodule "stability-control"]
+	path = stability-control
+	url = https://github.com/dxarora/stability-control.git
+[submodule "aircraft-performance"]
+	path = aircraft-performance
+	url = https://github.com/dxarora/aircraft-performance.git
