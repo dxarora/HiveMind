@@ -19,7 +19,7 @@ www.runable.com
 
 lovable.dev
 replit.com
-beautiful.ai
+~~www.beautiful.ai~~
 pitch.com
 Free AI Builders Toolkit (2026)
 
